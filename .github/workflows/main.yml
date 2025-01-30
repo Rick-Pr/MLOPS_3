@@ -24,9 +24,10 @@ jobs:
       
       - name: Lint Code
         run: |
-          pip install black flake8
-          black --check .
-          flake8 .
+          pip install black==22.12.0 flake8==5.0.4
+          # Исключаем проверку black для git-файлов
+          black --check . --exclude '\.git|\.hg|\.mypy_cache|\.tox|\.venv|build|dist'
+          flake8 . --exclude=.git,__pycache__,build,dist
       
       - name: Run Tests
         run: pytest tests/
