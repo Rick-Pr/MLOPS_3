@@ -1,64 +1,63 @@
 stages:
-  - lint
-  - test
   - build
+  - test
   - deploy
 
 variables:
-  DOCKER_HOST: tcp://docker:2375
-  DOCKER_TLS_CERTDIR: ""
-
-include:
-  - template: Jobs/Docker.gitlab-ci.yml
-
-lint:
-  stage: lint
-  image: python:3.9
-  script:
-    - pip install flake8 black
-    - black --check .
-    - flake8 .
-
-test:
-  stage: test
-  image: python:3.9
-  script:
-    - pip install -r requirements.txt
-    - python -m pytest tests/
-
-build-package:
-  stage: build
-  image: python:3.9
-  script:
-    - pip install build twine
-    - python -m build
-    - python -m twine upload dist/*
-  only:
-    - main
-
-pages:
-  stage: deploy
-  image: python:3.9
-  script:
-    - pip install -r requirements.txt
-    - pip install quarto
-    - quarto render README.md
-    - mkdir public
-    - mv README.html public/index.html
-  artifacts:
-    paths:
-      - public
-  only:
-    - main
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE/credit-default-analysis
 
 docker-build:
   stage: build
-  image: docker:latest
-  services:
-    - docker:dind
   script:
-    - docker build -t $CI_REGISTRY_IMAGE .
-    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
-    - docker push $CI_REGISTRY_IMAGE
+    - docker build -t $DOCKER_IMAGE .
+    - docker tag $DOCKER_IMAGE $CI_REGISTRY_IMAGE/credit-default-analysis:latest
+    - echo "$CI_JOB_TOKEN" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+    - docker push $DOCKER_IMAGE:latest
   only:
+    - main
+
+flake8-lint:
+  stage: test
+  image: python:3.9
+  script:
+    - pip install flake8
+    - flake8 . --count --select=E9,F63,F82 --show-source --statistics
+    - flake8 . --count --exit-zero --max-complexity=15 --statistics
+  except:
+    - main
+
+black-format:
+  stage: test
+  image: python:3.9
+  script:
+    - pip install black
+    - black --check .
+    - black .
+  except:
+    - main
+
+pypi-deploy:
+  stage: deploy
+  image: python:3.9
+  script:
+    - pip install twine
+    - python setup.py sdist bdist_wheel
+    - twine upload dist/*
+  only:
+    - main
+  except:
+    - main
+
+build-documentation:
+  stage: deploy
+  image: jupyter/minimal-notebook
+  script:
+    - jupyter nbconvert --to html notebooks/eda.ipynb --output-dir public
+  artifacts:
+    paths:
+      - public/
+    expire_in: 1 hour
+  only:
+    - main
+  except:
     - main

@@ -5,41 +5,61 @@ import seaborn as sns
 def perform_eda(file_path='Credit_Default.csv'):
     # Загрузка данных
     df = pd.read_csv(file_path)
-    
+
+    # Предварительный обзор данных
     print("Первые 5 строк:")
     print(df.head())
     print("\nОписательная статистика:")
     print(df.describe())
-    
+
+    missing_percentages = df.isnull().mean() * 100
+
+    if len(missing_percentages) > 0:
+        plt.figure(figsize=(10, 6))
+        missing_percentages.plot(kind='bar')
+        plt.title('Процент пропущенных значений по столбцам')
+        plt.xlabel('Столбцы')
+        plt.ylabel('Процент пропущенных значений')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+        plt.close()
+    else:
+        print(df.info())
+
+    print("Пропущенных значений:", df.isnull().sum().sum())
+
+    # 3. Попарное распределение признаков
     sns.pairplot(df, hue='Default')
     plt.suptitle('Попарное распределение признаков')
     plt.tight_layout()
-    plt.savefig('pairplot.png')
+    plt.show()
     plt.close()
-    
 
+    # 4. Корреляционный анализ
     plt.figure(figsize=(10, 8))
-    correlation_matrix = df.corr()
+    correlation_matrix = df[['Income', 'Loan', 'Loan to Income']].corr()
     sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', linewidths=0.5)
     plt.title('Корреляционная матрица')
     plt.tight_layout()
-    plt.savefig('correlation_heatmap.png')
+    plt.show()
     plt.close()
-    
 
+    # 5. Анализ баланса классов
     plt.figure(figsize=(8, 6))
     df['Default'].value_counts().plot(kind='bar')
     plt.title('Распределение классов')
     plt.xlabel('Класс (Default)')
     plt.ylabel('Количество')
     plt.tight_layout()
-    plt.savefig('class_balance.png')
+    plt.show()
     plt.close()
-    
 
+    # Выводы
     default_rate = df['Default'].mean() * 100
     print(f"\nДоля дефолтов: {default_rate:.2f}%")
-    
+
+    correlation_matrix = df.corr()
     correlation_with_default = correlation_matrix['Default'].sort_values(ascending=False)
     print("\nКорреляция признаков с дефолтом:")
     print(correlation_with_default)
